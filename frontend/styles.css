@@ -57,9 +57,7 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='196' height='196'%3E%3Cpath d='M6.5 9.5a4 4 0 0 1 4-4h7a4 4 0 0 1 4 4v10h-15z' fill='%23ff5a1f' fill-opacity='.35'/%3E%3C/svg%3E") 56px 28px / 196px 196px,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='252' height='252'%3E%3Cpath d='M6.5 9.5a4 4 0 0 1 4-4h7a4 4 0 0 1 4 4v10h-15z' fill='%236d4aff' fill-opacity='.35'/%3E%3C/svg%3E") 168px 112px / 252px 252px,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='308' height='308'%3E%3Cpath d='M6.5 9.5a4 4 0 0 1 4-4h7a4 4 0 0 1 4 4v10h-15z' fill='%23e0a100' fill-opacity='.35'/%3E%3C/svg%3E") 252px 196px / 308px 308px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='196' height='196'%3E%3Cpath d='M6.5 9.5a4 4 0 0 1 4-4h7a4 4 0 0 1 4 4v10h-15z' fill='%23ff5a1f' fill-opacity='.22'/%3E%3C/svg%3E") 56px 28px / 196px 196px,
     var(--seat-grid) 0 0 / 28px 28px;
   mask-image: radial-gradient(ellipse 75% 85% at 50% 0%, #000 30%, transparent 100%);
 }
@@ -85,8 +83,8 @@ h2,
 h3 {
   margin: 0;
   font-family: var(--display);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
 }
 
 h1 {
@@ -216,7 +214,7 @@ nav a[aria-current] {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: conic-gradient(from 200deg, var(--flash), var(--pink), var(--violet), var(--flash));
+  background: var(--ink);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -248,10 +246,10 @@ nav a[aria-current] {
 
 .ticker {
   overflow: hidden;
-  background: var(--ink);
-  color: var(--paper);
-  font: 500 12px var(--mono);
-  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--line);
+  color: var(--faint);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -270,13 +268,21 @@ nav a[aria-current] {
   display: flex;
   align-items: center;
   gap: 28px;
-  padding: 9px 28px 9px 0;
+  padding: 8px 28px 8px 0;
   white-space: nowrap;
 }
 
 .ticker span::after {
-  content: "/";
-  color: var(--flash);
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--flash);
+  opacity: 0.6;
+}
+
+body:not([data-page="home"]) .ticker {
+  display: none;
 }
 
 main {
@@ -536,18 +542,15 @@ code {
 
 .hero h1 {
   margin-top: 22px;
-  font-size: clamp(42px, 6.4vw, 76px);
-  font-weight: 750;
-  letter-spacing: -0.05em;
-  line-height: 0.98;
+  font-size: clamp(42px, 6vw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
 }
 
 mark {
-  color: inherit;
-  background: linear-gradient(transparent 58%, rgba(255, 90, 31, 0.28) 58%, rgba(255, 90, 31, 0.28) 92%, transparent 92%) no-repeat 0 0 / 0% 100%;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  animation: highlight 1s 0.5s var(--ease) forwards;
+  background: none;
+  color: var(--flash);
 }
 
 .lead {
@@ -577,7 +580,6 @@ mark {
   gap: 18px;
   padding: 26px;
   box-shadow: 0 2px 4px rgba(40, 30, 10, 0.06), 0 28px 40px -16px rgba(40, 30, 10, 0.25);
-  transform: rotate(3deg);
   transition: transform 0.6s var(--ease);
   animation: float-in 0.8s 0.1s var(--ease) both;
   --radius: 22px;
@@ -595,7 +597,7 @@ mark {
   inset: 0 0 auto;
   height: 6px;
   border-radius: 22px 22px 0 0;
-  background: linear-gradient(90deg, var(--flash), var(--pink), var(--violet));
+  background: var(--flash);
 }
 
 .ticket-top,
@@ -675,7 +677,7 @@ mark {
 
 .steps li:hover {
   transform: translateY(-4px);
-  border-color: var(--tone);
+  border-color: var(--line-strong);
   background: var(--surface);
   box-shadow: var(--shadow-hover);
 }
@@ -687,8 +689,8 @@ mark {
   height: 32px;
   margin-bottom: 8px;
   border-radius: 10px;
-  background: var(--tone-soft);
-  color: var(--tone);
+  background: var(--flash-soft);
+  color: var(--flash);
   font: 600 12px var(--mono);
   transition: transform 0.4s var(--ease);
 }
@@ -782,7 +784,7 @@ mark {
 }
 
 .event-card:hover {
-  transform: translateY(-6px) rotate(-0.6deg);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-hover);
 }
 
@@ -814,7 +816,7 @@ mark {
   overflow: hidden;
   border-radius: 12px;
   color: #fff;
-  background: linear-gradient(150deg, var(--tone), color-mix(in srgb, var(--tone) 55%, #1a0f05));
+  background: linear-gradient(var(--angle, 150deg), color-mix(in srgb, var(--tone) 85%, #000), color-mix(in srgb, var(--tone) 40%, #120a04));
   transition: transform 0.5s var(--ease);
 }
 
@@ -823,6 +825,7 @@ mark {
   position: absolute;
   inset: -28px;
   background: var(--seat-grid-light) 0 0 / 28px 28px;
+  opacity: 0.4;
   transition: transform 0.8s var(--ease);
 }
 
@@ -844,26 +847,38 @@ mark {
   transform: translate(14px, -14px);
 }
 
+.poster-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.82);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .poster-date {
   position: relative;
   z-index: 1;
-  align-self: flex-start;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--tone);
-  font: 600 11.5px var(--mono);
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.poster-date span {
+  padding-bottom: 4px;
+  color: rgba(255, 255, 255, 0.82);
+  font: 500 11.5px/1.35 var(--mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .poster strong {
-  position: relative;
-  z-index: 1;
-  font: 800 34px/0.9 var(--display);
+  font: 650 60px/0.82 var(--display);
   letter-spacing: -0.04em;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
   transform-origin: left bottom;
   transition: transform 0.5s var(--ease);
 }
@@ -903,8 +918,8 @@ mark {
 }
 
 .featured-copy h2 {
-  font-size: clamp(30px, 4vw, 46px);
-  letter-spacing: -0.045em;
+  font-size: clamp(30px, 4vw, 44px);
+  letter-spacing: -0.03em;
 }
 
 .price {
@@ -921,7 +936,7 @@ mark {
 }
 
 .featured .poster strong {
-  font-size: 56px;
+  font-size: 104px;
 }
 
 .ticket-stub {
@@ -1014,15 +1029,10 @@ mark {
   min-height: 200px;
   border-radius: 18px;
   box-shadow: var(--shadow-hover);
-  transform: rotate(-2deg);
-}
-
-.event-head .poster:hover {
-  transform: rotate(0deg) scale(1.03);
 }
 
 .event-head .poster strong {
-  font-size: 30px;
+  font-size: 76px;
 }
 
 .event-head > div:last-child {
@@ -1033,8 +1043,8 @@ mark {
 }
 
 .event-head h1 {
-  font-size: clamp(32px, 5vw, 52px);
-  letter-spacing: -0.045em;
+  font-size: clamp(32px, 5vw, 50px);
+  letter-spacing: -0.03em;
 }
 
 .meta {
@@ -1311,8 +1321,8 @@ mark {
 }
 
 .countdown {
-  font: 750 40px/1 var(--display);
-  letter-spacing: -0.04em;
+  font: 700 40px/1 var(--display);
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1328,7 +1338,7 @@ mark {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--violet), var(--flash));
+  background: var(--flash);
   transition: width 1s linear;
 }
 
@@ -1351,9 +1361,10 @@ mark {
 
 .auth-copy h1 {
   margin-top: 6px;
-  font-size: clamp(36px, 5vw, 56px);
-  letter-spacing: -0.05em;
-  line-height: 1;
+  font-size: clamp(36px, 5vw, 54px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
 }
 
 .auth-copy p {
@@ -1453,7 +1464,7 @@ mark {
 
 .page-head h1 {
   font-size: 36px;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.03em;
 }
 
 .list {
@@ -1644,7 +1655,7 @@ mark {
 }
 
 .toast.info::before {
-  background: var(--violet);
+  background: var(--ink);
 }
 
 .hood {
@@ -1659,7 +1670,6 @@ mark {
   gap: 6px;
   padding: 20px;
   border: 1px solid var(--line);
-  border-top: 3px solid var(--tone);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.7);
   font-size: 14px;
@@ -1737,9 +1747,9 @@ mark {
 }
 
 .verdict.running {
-  border-color: rgba(109, 74, 255, 0.35);
-  background: var(--violet-soft);
-  color: var(--violet);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text);
   animation: blink 1s steps(2) infinite;
 }
 
@@ -2029,12 +2039,6 @@ mark {
   }
 }
 
-@keyframes highlight {
-  to {
-    background-size: 100% 100%;
-  }
-}
-
 @keyframes marquee {
   to {
     transform: translateX(-50%);
@@ -2077,10 +2081,6 @@ mark {
   *::after {
     animation: none !important;
     transition: none !important;
-  }
-
-  mark {
-    background-size: 100% 100%;
   }
 }
 
