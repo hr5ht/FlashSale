@@ -1697,6 +1697,40 @@ document.addEventListener("click", (click) => {
   go(link.getAttribute("href"));
 });
 window.addEventListener("popstate", route);
+
+const themeToggle = document.querySelector("#theme-toggle");
+const themeColor = document.querySelector('meta[name="theme-color"]');
+const systemDark = matchMedia("(prefers-color-scheme: dark)");
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} mode`);
+  themeColor.content = theme === "dark" ? "#131210" : "#f7f5f0";
+}
+
+function savedTheme() {
+  try {
+    return localStorage.getItem("theme");
+  } catch {
+    return null;
+  }
+}
+
+themeToggle.onclick = () => {
+  const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  applyTheme(theme);
+  try {
+    localStorage.setItem("theme", theme);
+  } catch {
+    // The choice still applies for this visit.
+  }
+};
+systemDark.addEventListener("change", (change) => {
+  if (!savedTheme()) {
+    applyTheme(change.matches ? "dark" : "light");
+  }
+});
+applyTheme(document.documentElement.dataset.theme ?? (systemDark.matches ? "dark" : "light"));
 drawTour();
 renderNav();
 route();
