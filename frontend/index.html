@@ -57,8 +57,29 @@
     <aside class="drawer" id="tour" hidden></aside>
     <aside class="drawer" id="log" hidden></aside>
     <footer>
-      <span>Built with FastAPI and PostgreSQL. Seats are kept unique by the database, not the browser.</span>
-      <a href="https://github.com/hr5ht/Flash-Sale-Ticketing-Platform" target="_blank" rel="noopener">Source</a>
+      <div class="foot">
+        <div class="foot-brand">
+          <a class="brand" href="/">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9"/><path d="M18 5 9 18h6l-1 9 9-13h-6z"/></svg>
+            <span>FlashSale</span>
+          </a>
+          <p>Flash-sale ticketing where the database, not the browser, makes sure no seat is ever sold twice.</p>
+        </div>
+        <div class="foot-links">
+          <div>
+            <strong>Tickets</strong>
+            <a href="/">Events</a>
+            <a href="/my-bookings">My bookings</a>
+            <a href="/login">Try the demo</a>
+          </div>
+          <div>
+            <strong>Project</strong>
+            <a href="https://github.com/hr5ht/Flash-Sale-Ticketing-Platform" target="_blank" rel="noopener">Source on GitHub</a>
+            <span>FastAPI &middot; PostgreSQL</span>
+          </div>
+        </div>
+      </div>
+      <p class="foot-note">Seats never sold twice &middot; All-or-nothing holds &middot; Two-minute timer</p>
     </footer>
     <script src="/app.js" type="module"></script>
   </body>

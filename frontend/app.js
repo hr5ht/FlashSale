@@ -53,6 +53,13 @@ const poster = (event) => `
     <strong>${esc(event.category)}</strong>
   </div>`;
 
+const ICONS = {
+  pin: `<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 18s6-5.2 6-10a6 6 0 0 0-12 0c0 4.8 6 10 6 10z"/><circle cx="10" cy="8" r="2.2"/></svg>`,
+  calendar: `<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2.5"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4"/></svg>`,
+};
+
+const byPrice = (tiers) => [...tiers].sort((a, b) => a.price_cents - b.price_cents);
+
 const tone = (text) =>
   [...String(text)].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TONES;
 
@@ -255,6 +262,7 @@ async function renderEvents() {
       <div><span class="kicker">Tickets</span><h2>On sale now</h2></div>
       <span class="muted" id="count"></span>
     </div>
+    <div class="filters" id="filters" role="group" aria-label="Filter by category"></div>
     <div class="grid" id="events">${`<div class="skeleton"></div>`.repeat(6)}</div>
     <div class="section-head">
       <div><span class="kicker">How it works</span><h2>Three steps, two minutes</h2></div>
@@ -286,10 +294,33 @@ async function renderEvents() {
   if (featured) {
     document.querySelector("#featured").outerHTML = featuredEvent(featured);
   }
-  document.querySelector("#count").textContent = plural(page.items.length, "event");
-  document.querySelector("#events").innerHTML = page.items.length
-    ? page.items.map(eventCard).join("")
-    : `<p class="empty">No events on sale right now.</p>`;
+  const rest = page.items.filter((event) => event.id !== featured?.id);
+  const categories = [...new Set(rest.map((event) => event.category))];
+  const filters = document.querySelector("#filters");
+  let active = "all";
+  const drawGrid = () => {
+    const shown = active === "all" ? rest : rest.filter((event) => event.category === active);
+    filters.hidden = categories.length < 2;
+    document.querySelector("#count").textContent = filters.hidden ? plural(page.items.length, "event") : "";
+    filters.innerHTML = [["all", rest.length], ...categories.map((category) => [category, rest.filter((event) => event.category === category).length])]
+      .map(
+        ([value, count]) => `
+          <button class="secondary chip-filter ${value === "all" ? "" : `tone-${tone(value)}`} ${value === active ? "on" : ""}"
+            data-filter="${esc(value)}" aria-pressed="${value === active}">${esc(value)} <span>${count}</span></button>`,
+      )
+      .join("");
+    document.querySelector("#events").innerHTML = shown.length
+      ? shown.map(eventCard).join("")
+      : `<p class="empty">${page.items.length ? "More events are on the way." : "No events on sale right now."}</p>`;
+  };
+  filters.onclick = (click) => {
+    const value = click.target.closest("[data-filter]")?.dataset.filter;
+    if (value && value !== active) {
+      active = value;
+      drawGrid();
+    }
+  };
+  drawGrid();
 }
 
 const isOnSale = (event) => new Date(event.sale_starts_at) <= new Date();
@@ -339,8 +370,8 @@ async function renderEvent(id) {
         <span class="tag">${esc(event.category)}</span>
         <h1>${esc(event.title)}</h1>
         <p class="meta">
-          <span>${esc(event.venue)}, ${esc(event.city)}</span>
-          <span>${when(event.starts_at)}</span>
+          <span>${ICONS.pin}${esc(event.venue)}, ${esc(event.city)}</span>
+          <span>${ICONS.calendar}${when(event.starts_at)}</span>
           <span class="badge ${onSale ? "live" : ""}">${onSale ? "On sale" : `Opens ${when(event.sale_starts_at)}`}</span>
         </p>
         <p class="muted">${esc(event.description)}</p>
@@ -356,7 +387,7 @@ async function renderEvent(id) {
         <div id="seatmap" class="seatmap"></div>
         <p class="swipe-hint" id="swipe-hint" hidden>Swipe to see every seat &rarr;</p>
         <div class="legend">
-          <span><i class="seat available"></i>Available</span>
+          <span><i class="seat available shade-0"></i>Available, coloured by price</span>
           <span><i class="seat selected"></i>Selected</span>
           <span><i class="seat mine"></i>Your hold</span>
           <span><i class="seat held"></i>Held by others</span>
@@ -389,7 +420,7 @@ async function renderEvent(id) {
   const currentHold = () => state.holds.get(event.id);
 
   function index() {
-    const tiers = new Map(seatMap.price_tiers.map((tier) => [tier.id, tier]));
+    const tiers = new Map(byPrice(seatMap.price_tiers).map((tier, rank) => [tier.id, { ...tier, shade: rank % 4 }]));
     seats.clear();
     for (const section of seatMap.sections) {
       for (const row of section.rows) {
@@ -408,7 +439,7 @@ async function renderEvent(id) {
     const info = seats.get(seat.id);
     const status = mine.has(seat.id) ? "mine" : selected.has(seat.id) ? "selected" : seat.status;
     const title = `${info.label} · ${info.tier.name} ${money(info.tier.price_cents)}`;
-    return `<button class="seat ${status}" data-seat="${seat.id}" title="${esc(title)}"
+    return `<button class="seat ${status} shade-${info.tier.shade}" data-seat="${seat.id}" title="${esc(title)}"
       aria-label="${esc(title)}" ${seat.status === "available" ? "" : "disabled"}>${seat.number}</button>`;
   }
 
@@ -440,10 +471,19 @@ async function renderEvent(id) {
     </ul>
     <p class="total"><span>Total</span><span>${money(items.reduce((sum, seat) => sum + seat.tier.price_cents, 0))}</span></p>`;
 
-  const tierList = () => `
-    <ul class="lines">
-      ${seatMap.price_tiers.map((tier) => `<li><span>${esc(tier.name)}</span><span>${money(tier.price_cents)}</span></li>`).join("")}
-    </ul>`;
+  const tierList = () => {
+    const free = [...seats.values()].filter((seat) => seat.status === "available").length;
+    return `
+      <p class="seats-left"><strong>${free}</strong> of ${plural(seats.size, "seat")} left</p>
+      <ul class="lines">
+        ${byPrice(seatMap.price_tiers)
+          .map(
+            (tier, rank) => `
+              <li><span><i class="swatch shade-${rank % 4}"></i>${esc(tier.name)}</span><span>${money(tier.price_cents)}</span></li>`,
+          )
+          .join("")}
+      </ul>`;
+  };
 
   function setStatus(seatIds, status) {
     for (const section of seatMap.sections) {
@@ -746,35 +786,67 @@ async function renderBookings() {
   }
   const page = await api("/bookings?limit=50");
   const eventIds = [...new Set(page.items.map((booking) => booking.event_id))];
-  const events = await Promise.all(eventIds.map((eventId) => api(`/events/${eventId}`)));
+  const [events, maps] = await Promise.all([
+    Promise.all(eventIds.map((eventId) => api(`/events/${eventId}`))),
+    Promise.all(eventIds.map((eventId) => api(`/events/${eventId}/seatmap`))),
+  ]);
   const byId = new Map(events.map((event) => [event.id, event]));
+  const seatLabels = new Map();
+  for (const map of maps) {
+    for (const section of map.sections) {
+      for (const row of section.rows) {
+        for (const seat of row.seats) {
+          seatLabels.set(seat.id, `${section.name} ${row.label}${seat.number}`);
+        }
+      }
+    }
+  }
+  const total = page.items.reduce((sum, booking) => sum + booking.total_cents, 0);
   view.innerHTML = `
     <div class="page-head">
       <div><span class="kicker">Your tickets</span><h1>My bookings</h1></div>
-      <span class="muted">${plural(page.items.length, "booking")}</span>
+      <span class="muted">${
+        page.items.length ? `${plural(page.items.length, "booking")} &middot; ${money(total)}` : ""
+      }</span>
     </div>
     ${
       page.items.length
         ? `<div class="list">${page.items
             .map((booking, index) => {
               const event = byId.get(booking.event_id);
+              const labels = booking.seat_ids.map((seatId) => seatLabels.get(seatId) ?? `Seat ${seatId}`);
               return `
-                <div class="ticket booking tone-${tone(event.category)}" style="--i:${index}">
-                  <div class="booking-main">
-                    <span class="booking-id">#${booking.id}</span>
-                    <div>
-                      <a href="/event/${booking.event_id}"><strong>${esc(event.title)}</strong></a>
-                      <p class="muted">${plural(booking.seat_ids.length, "seat")} &middot; booked ${when(booking.created_at)}</p>
-                    </div>
+                <article class="ticket my-ticket tone-${tone(event.category)}" style="--i:${index}">
+                  <a class="my-ticket-poster" href="/event/${event.id}" aria-label="${esc(event.title)}">${poster(event)}</a>
+                  <div class="my-ticket-main">
+                    <span class="kicker">Booking #${booking.id}</span>
+                    <a href="/event/${event.id}"><h3>${esc(event.title)}</h3></a>
+                    <p class="meta">
+                      <span>${ICONS.calendar}${when(event.starts_at)}</span>
+                      <span>${ICONS.pin}${esc(event.venue)}, ${esc(event.city)}</span>
+                    </p>
+                    <div class="chips">${labels.map((label) => `<span class="chip">${esc(label)}</span>`).join("")}</div>
                   </div>
-                  <div class="booking-stub">
+                  <div class="my-ticket-stub">
+                    <span class="muted">${plural(booking.seat_ids.length, "seat")}</span>
                     <strong>${money(booking.total_cents)}</strong>
+                    <span class="faint">Booked ${when(booking.created_at)}</span>
                     <button class="secondary small" data-cancel="${booking.id}">Cancel</button>
                   </div>
-                </div>`;
+                </article>`;
             })
             .join("")}</div>`
-        : `<p class="empty">No bookings yet. <a class="link" href="/">Find an event</a>.</p>`
+        : `
+          <div class="ticket empty-ticket">
+            <div class="mini-seats" aria-hidden="true">
+              ${Array.from({ length: 30 }, (_, index) => `<i style="--d:${(index * 7) % 23}"></i>`).join("")}
+            </div>
+            <div class="empty-ticket-copy">
+              <h2>No tickets <mark>yet.</mark></h2>
+              <p class="muted">Pick an event, hold a few seats and confirm them before the timer runs out. Your tickets show up here.</p>
+              <a class="button" href="/">Find an event <span class="arrow">&rarr;</span></a>
+            </div>
+          </div>`
     }`;
   view.onclick = (click) => {
     const bookingId = click.target.closest("[data-cancel]")?.dataset.cancel;
@@ -1362,41 +1434,53 @@ async function renderManage() {
           <button type="submit" class="secondary">Save as draft</button>
         </div>
       </form>
-      <div class="list">
-        ${
-          mine.items.length
-            ? mine.items
-                .map((event, index) => {
-                  const sold = sales.get(event.id);
-                  return `
-                    <div class="ticket booking tone-${tone(event.category)}" style="--i:${index}">
-                      <div class="booking-main">
-                        <div>
+      <div class="manage-side">
+        <section class="preview" aria-label="Live preview">
+          <span class="kicker">Live preview</span>
+          <div class="preview-card" id="preview-card" inert></div>
+          <div class="panel preview-map">
+            <div class="stage">Stage</div>
+            <div class="mini-map" id="preview-seats"></div>
+            <ul class="preview-tiers" id="preview-tiers"></ul>
+          </div>
+        </section>
+        <span class="kicker">Your events</span>
+        <div class="list">
+          ${
+            mine.items.length
+              ? mine.items
+                  .map((event, index) => {
+                    const sold = sales.get(event.id);
+                    return `
+                      <div class="ticket booking tone-${tone(event.category)}" style="--i:${index}">
+                        <div class="booking-main">
+                          <div>
+                            ${
+                              sold
+                                ? `<a href="/event/${event.id}"><strong>${esc(event.title)}</strong></a>`
+                                : `<strong>${esc(event.title)}</strong>`
+                            }
+                            <p class="muted">${when(event.starts_at)} &middot; ${esc(event.city)}</p>
+                            <p class="muted">${
+                              sold
+                                ? `${sold.seats_booked} of ${sold.seats_total} seats booked &middot; ${money(sold.gross_cents)}`
+                                : `Draft. Sale opens ${when(event.sale_starts_at)}`
+                            }</p>
+                          </div>
+                        </div>
+                        <div class="booking-stub">
                           ${
                             sold
-                              ? `<a href="/event/${event.id}"><strong>${esc(event.title)}</strong></a>`
-                              : `<strong>${esc(event.title)}</strong>`
+                              ? `<span class="badge live">Live</span>`
+                              : `<button class="small" data-publish="${event.id}">Publish</button>`
                           }
-                          <p class="muted">${when(event.starts_at)} &middot; ${esc(event.city)}</p>
-                          <p class="muted">${
-                            sold
-                              ? `${sold.seats_booked} of ${sold.seats_total} seats booked &middot; ${money(sold.gross_cents)}`
-                              : `Draft. Sale opens ${when(event.sale_starts_at)}`
-                          }</p>
                         </div>
-                      </div>
-                      <div class="booking-stub">
-                        ${
-                          sold
-                            ? `<span class="badge live">Live</span>`
-                            : `<button class="small" data-publish="${event.id}">Publish</button>`
-                        }
-                      </div>
-                    </div>`;
-                })
-                .join("")
-            : `<p class="empty">No events yet. Create one and it shows up here.</p>`
-        }
+                      </div>`;
+                  })
+                  .join("")
+              : `<p class="empty">No events yet. Create one and it shows up here.</p>`
+          }
+        </div>
       </div>
     </div>`;
   const form = document.querySelector("#new-event");
@@ -1410,17 +1494,68 @@ async function renderManage() {
       "row",
     )}`;
   };
-  countSeats();
-  form.oninput = countSeats;
+  const dateOr = (value, fallback) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
+  };
+  const drawPreview = () => {
+    const data = new FormData(form);
+    const prices = data.getAll("price");
+    const rows = data.getAll("rows");
+    const seats = data.getAll("seats");
+    const tierInputs = data.getAll("tier").map((name, index) => ({
+      name: name.trim() || `Tier ${index + 1}`,
+      price_cents: Math.max(0, Math.round(Number(prices[index]) * 100) || 0),
+      rows: Math.max(0, Math.floor(Number(rows[index])) || 0),
+      seats: Math.max(0, Math.floor(Number(seats[index])) || 0),
+    }));
+    const priced = tierInputs.filter((tier) => tier.price_cents > 0);
+    const now = new Date().toISOString();
+    const draft = {
+      id: 0,
+      title: data.get("title").trim() || "Your event title",
+      category: data.get("category"),
+      city: data.get("city").trim() || "City",
+      venue: data.get("venue").trim() || "Venue",
+      starts_at: dateOr(data.get("starts_at"), now),
+      sale_starts_at: dateOr(data.get("sale_starts_at"), now),
+      min_price_cents: priced.length ? Math.min(...priced.map((tier) => tier.price_cents)) : 0,
+    };
+    form.closest(".manage").querySelector("#preview-card").innerHTML = eventCard(draft, 0);
+    const shades = new Map(byPrice(tierInputs).map((tier, rank) => [tier, rank % 4]));
+    const MAX_ROWS = 4;
+    const MAX_SEATS = 24;
+    document.querySelector("#preview-seats").innerHTML = tierInputs
+      .flatMap((tier) =>
+        Array.from(
+          { length: Math.min(tier.rows, MAX_ROWS) },
+          () => `<div class="shade-${shades.get(tier)}">${"<i></i>".repeat(Math.min(tier.seats, MAX_SEATS))}</div>`,
+        ).concat(tier.rows > MAX_ROWS ? [`<small>+${plural(tier.rows - MAX_ROWS, "more row")}</small>`] : []),
+      )
+      .join("");
+    document.querySelector("#preview-tiers").innerHTML = tierInputs
+      .map(
+        (tier) => `
+          <li><span><i class="swatch shade-${shades.get(tier)}"></i>${esc(tier.name)}</span>
+          <span>${plural(tier.rows * tier.seats, "seat")} &middot; ${money(tier.price_cents)}</span></li>`,
+      )
+      .join("");
+  };
+  const refreshForm = () => {
+    countSeats();
+    drawPreview();
+  };
+  refreshForm();
+  form.oninput = refreshForm;
   form.querySelector("#add-tier").onclick = () => {
     tiers.insertAdjacentHTML("beforeend", tierFields());
-    countSeats();
+    refreshForm();
   };
   tiers.onclick = (click) => {
     const tier = click.target.closest("[data-remove-tier]")?.closest(".tier");
     if (tier && tiers.children.length > 1) {
       tier.remove();
-      countSeats();
+      refreshForm();
     }
   };
   form.onsubmit = (submit) => {
