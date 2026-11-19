@@ -354,6 +354,7 @@ async function renderEvent(id) {
         </div>
         <div class="stage">Stage</div>
         <div id="seatmap" class="seatmap"></div>
+        <p class="swipe-hint" id="swipe-hint" hidden>Swipe to see every seat &rarr;</p>
         <div class="legend">
           <span><i class="seat available"></i>Available</span>
           <span><i class="seat selected"></i>Selected</span>
@@ -366,7 +367,18 @@ async function renderEvent(id) {
     </div>`;
 
   const seatMapNode = document.querySelector("#seatmap");
+  const swipeHint = document.querySelector("#swipe-hint");
   const checkout = document.querySelector("#checkout");
+
+  function showOverflow() {
+    const { scrollLeft, scrollWidth, clientWidth } = seatMapNode;
+    const hidden = scrollWidth - clientWidth;
+    seatMapNode.classList.toggle("more-left", scrollLeft > 1);
+    seatMapNode.classList.toggle("more-right", scrollLeft < hidden - 1);
+    swipeHint.hidden = hidden <= 1;
+  }
+  seatMapNode.addEventListener("scroll", showOverflow, { passive: true });
+  new ResizeObserver(showOverflow).observe(seatMapNode);
   const selected = new Set();
   const seats = new Map();
   const heldUntil = new Map();
@@ -419,6 +431,7 @@ async function renderEvent(id) {
           </div>`,
       )
       .join("");
+    showOverflow();
   }
 
   const lines = (items) => `
@@ -1193,6 +1206,8 @@ function togglePanel(panel, draw) {
   tourPanel.hidden = true;
   logPanel.hidden = true;
   panel.hidden = !opening;
+  document.querySelector("#tour-toggle").setAttribute("aria-expanded", !tourPanel.hidden);
+  document.querySelector("#log-toggle").setAttribute("aria-expanded", !logPanel.hidden);
   if (opening) {
     draw();
   }
@@ -1450,6 +1465,7 @@ function route() {
   view.onclick = null;
   window.scrollTo(0, 0);
   const path = location.pathname;
+  document.body.dataset.page = path === "/" ? "home" : "inner";
   const section = navSection(path === "/login" && state.returnTo !== "/" ? state.returnTo : path);
   for (const link of nav.querySelectorAll("a")) {
     link.toggleAttribute("aria-current", link.getAttribute("href") === section);

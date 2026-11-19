@@ -64,6 +64,13 @@ body::before {
   mask-image: radial-gradient(ellipse 75% 85% at 50% 0%, #000 30%, transparent 100%);
 }
 
+body:not([data-page="home"])::before {
+  height: 420px;
+  background: var(--seat-grid) 0 0 / 28px 28px;
+  mask-image: linear-gradient(#000, transparent);
+  opacity: 0.6;
+}
+
 ::selection {
   background: rgba(255, 90, 31, 0.2);
 }
@@ -1108,8 +1115,42 @@ mark {
 }
 
 .seatmap {
+  --fade-left: 0px;
+  --fade-right: 0px;
   overflow-x: auto;
   padding: 4px;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade-left),
+    #000 calc(100% - var(--fade-right)),
+    transparent
+  );
+}
+
+.seatmap.more-left {
+  --fade-left: 48px;
+}
+
+.seatmap.more-right {
+  --fade-right: 48px;
+}
+
+.swipe-hint {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: var(--faint);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.swipe-hint[hidden] {
+  display: none;
 }
 
 .section {
@@ -1569,13 +1610,16 @@ mark {
 
 .toast {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  top: 80px;
+  left: 0;
+  right: 0;
   z-index: 20;
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 380px;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  margin: 0 auto;
   padding: 13px 18px;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1737,15 +1781,69 @@ mark {
 
 .dock {
   position: fixed;
+  right: 20px;
   bottom: 20px;
-  left: 20px;
   z-index: 15;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.dock button {
+.dock-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
   box-shadow: var(--shadow);
+}
+
+.dock-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dock-button .count {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  border: 2px solid var(--paper);
+  background: var(--flash);
+  color: #fff;
+  font-size: 10px;
+}
+
+.dock-button::after {
+  content: attr(data-label);
+  position: absolute;
+  right: calc(100% + 10px);
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12.5px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(4px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.2s var(--ease);
+}
+
+.dock-button:hover::after,
+.dock-button:focus-visible::after {
+  opacity: 1;
+  transform: none;
+}
+
+.dock-button[aria-expanded="true"] {
+  border-color: var(--ink);
 }
 
 .count {
@@ -1758,8 +1856,8 @@ mark {
 
 .drawer {
   position: fixed;
-  bottom: 68px;
-  left: 20px;
+  right: 76px;
+  bottom: 20px;
   z-index: 15;
   width: min(480px, calc(100vw - 40px));
   max-height: min(70vh, 620px);
@@ -2083,31 +2181,73 @@ mark {
   }
 
   .toast {
-    left: 16px;
-    right: 16px;
-    bottom: 72px;
+    top: 120px;
   }
 
   .topbar {
-    gap: 8px;
-    padding: 0 16px;
+    flex-wrap: wrap;
+    gap: 10px 8px;
+    height: auto;
+    padding: 10px 16px;
   }
 
-  .brand span,
   .who,
   .github {
     display: none;
   }
 
-  nav a[href="/lab"] {
+  nav {
+    order: 3;
+    width: 100%;
+  }
+
+  nav a {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  #auth button {
+    padding: 5px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .dock {
+    right: 16px;
+    bottom: 16px;
+    flex-direction: row;
+  }
+
+  .dock-button::after {
     display: none;
   }
 
-  nav a,
-  #auth button {
-    padding: 5px 6px;
-    font-size: 13px;
-    white-space: nowrap;
+  .drawer {
+    right: 12px;
+    left: 12px;
+    bottom: 72px;
+    width: auto;
+    max-height: 60vh;
+  }
+
+  footer {
+    padding-bottom: 84px;
+  }
+
+  .layout > .panel {
+    padding: 20px 16px;
+  }
+
+  .seat {
+    width: 27px;
+    height: 27px;
+  }
+
+  .row {
+    gap: 5px;
   }
 
   main {
