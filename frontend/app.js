@@ -45,18 +45,13 @@ const when = (iso) => {
   });
 };
 
-const poster = (event) => {
-  const date = new Date(event.starts_at);
-  const part = (option) => date.toLocaleString("en-IN", option);
-  return `
-    <div class="poster" style="--angle: ${130 + ((event.id * 37) % 70)}deg">
-      <span class="poster-top"><span>${esc(event.category)}</span><span>${esc(event.city)}</span></span>
-      <span class="poster-date">
-        <strong>${part({ day: "numeric" })}</strong>
-        <span>${part({ month: "short" })}<br>${part({ weekday: "short" })}</span>
-      </span>
-    </div>`;
-};
+const poster = (event) => `
+  <div class="poster">
+    <span class="poster-date">
+      ${new Date(event.starts_at).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+    </span>
+    <strong>${esc(event.category)}</strong>
+  </div>`;
 
 const tone = (text) =>
   [...String(text)].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TONES;
@@ -267,7 +262,7 @@ async function renderEvents() {
     <ol class="steps">
       ${STEPS.map(
         ([title, text], index) => `
-          <li style="--i:${index}">
+          <li class="tone-${index}" style="--i:${index}">
             <small>0${index + 1}</small><strong>${title}</strong><span>${text}</span>
           </li>`,
       ).join("")}
@@ -279,7 +274,7 @@ async function renderEvents() {
     <div class="hood">
       ${UNDER_THE_HOOD.map(
         ([title, text], index) => `
-          <div class="hood-card" style="--i:${index}">
+          <div class="hood-card tone-${index}" style="--i:${index}">
             <strong>${title}</strong><span>${text}</span>
           </div>`,
       ).join("")}
