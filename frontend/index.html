@@ -45,8 +45,14 @@
     </div>
     <main id="view"></main>
     <div class="dock">
-      <button class="secondary small" id="tour-toggle">Tour <span class="count" id="tour-count"></span></button>
-      <button class="secondary small" id="log-toggle">Requests <span class="count" id="log-count">0</span></button>
+      <button class="secondary dock-button" id="tour-toggle" aria-label="Tour" data-label="Tour">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 18V3m0 0h10l-2 3.5L14 10H4"/></svg>
+        <span class="count" id="tour-count"></span>
+      </button>
+      <button class="secondary dock-button" id="log-toggle" aria-label="Request log" data-label="Requests">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h9"/></svg>
+        <span class="count" id="log-count">0</span>
+      </button>
     </div>
     <aside class="drawer" id="tour" hidden></aside>
     <aside class="drawer" id="log" hidden></aside>
