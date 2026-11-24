@@ -8,6 +8,7 @@ const REFRESH_MS = 4000;
 const TONES = 4;
 const LOG_LIMIT = 60;
 const HIDDEN_FIELDS = new Set(["password", "access_token", "refresh_token"]);
+const API_BASE = "/api/v1";
 
 const state = {
   token: localStorage.getItem("token"),
@@ -75,7 +76,7 @@ async function refreshSession() {
   if (!refreshToken) {
     return false;
   }
-  const response = await fetch("/auth/refresh", {
+  const response = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -98,7 +99,8 @@ const hideSecrets = (value) =>
 
 async function send(path, { method = "GET", body, headers = {}, token = state.token, who } = {}) {
   const started = performance.now();
-  const response = await fetch(path, {
+  const url = `${API_BASE}${path}`;
+  const response = await fetch(url, {
     method,
     headers: {
       ...(body && { "Content-Type": "application/json" }),
@@ -112,14 +114,14 @@ async function send(path, { method = "GET", body, headers = {}, token = state.to
   const caller = who ?? (token ? (nameOf(state.user?.email) ?? "you") : "guest");
   record({
     method,
-    path,
+    path: url,
     key,
     who: caller,
     status: response.status,
     ms: Math.round(performance.now() - started),
     sent: hideSecrets(body),
     received: hideSecrets(data),
-    replay: key && { method, body, headers, token, who: caller },
+    replay: key && { path, method, body, headers, token, who: caller },
   });
   return { response, data };
 }
@@ -683,7 +685,7 @@ async function renderEvent(id) {
 
   function connect() {
     const scheme = location.protocol === "https:" ? "wss" : "ws";
-    const socket = new WebSocket(`${scheme}://${location.host}/events/${event.id}/seatmap/ws`);
+    const socket = new WebSocket(`${scheme}://${location.host}${API_BASE}/events/${event.id}/seatmap/ws`);
     state.socket = socket;
     socket.onopen = () => showLive(true);
     socket.onmessage = (message) => {
@@ -1324,7 +1326,7 @@ logPanel.onclick = (click) => {
     return;
   }
   attempt(async () => {
-    const { response, data } = await send(entry.path, entry.replay);
+    const { response, data } = await send(entry.replay.path, entry.replay);
     const same = data?.id !== undefined && data.id === entry.received?.id;
     toast(
       same
