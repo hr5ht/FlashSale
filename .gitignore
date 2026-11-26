@@ -23,3 +23,6 @@ REFINEMENTS.md
 .env.*
 !.env.example
 .vercel
+
+# copied in by the Vercel build step
+backend/frontend/

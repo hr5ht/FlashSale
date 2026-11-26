@@ -12,7 +12,12 @@ from app.core.exceptions import AppError, app_error_handler, unexpected_error_ha
 from app.core.middleware import BodySizeLimit, SecurityHeaders
 from app.db.session import engine
 
-FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+# Vercel only bundles backend/, so its build step copies ../frontend into backend/frontend.
+FRONTEND_DIR = next(
+    (path for path in (BACKEND_DIR / "frontend", BACKEND_DIR.parent / "frontend") if path.is_dir()),
+    BACKEND_DIR.parent / "frontend",
+)
 
 
 @asynccontextmanager

@@ -39,3 +39,7 @@ package = false
 
 [tool.vercel]
 entrypoint = "app.main:app"
+
+[tool.vercel.scripts]
+# Vercel builds from backend/, so bring the frontend inside the bundle.
+build = "rm -rf frontend && cp -R ../frontend frontend"

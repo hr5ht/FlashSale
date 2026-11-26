@@ -78,7 +78,7 @@ The tests drop and recreate every table in `TEST_DATABASE_URL`, so it must never
 
 ### Deployment
 
-Runs on Vercel with a Neon Postgres database. The Vercel project's Root Directory is `backend`. Migrations are run by hand from `backend/` (`uv run alembic upgrade head`) with Neon's direct (non-pooled) connection string before deploying.
+Runs on Vercel with a Neon Postgres database. The Vercel project's Root Directory is `backend`, and the build step in `backend/pyproject.toml` copies `frontend/` into it so the deployed app can serve it. Migrations are run by hand from `backend/` (`uv run alembic upgrade head`) with Neon's direct (non-pooled) connection string before deploying.
 
 ## Benchmarks
 
@@ -170,9 +170,9 @@ Results vary by a few percent between runs; run the commands above to reproduce 
 │   ├── uv.lock
 │   └── vercel.json
 ├── frontend/                    demo UI (AI-generated), served by the backend at /
-├── docker/postgres/             creates the test database on first start
+│                                (copied into backend/ during the Vercel build)
 ├── .github/workflows/ci.yml     lint, type-check, migrate and test with uv
-├── docker-compose.yml           db + backend (one-command setup)
+├── docker-compose.yml           db (+ test database) and backend: the one-command setup
 ├── .dockerignore
 └── README.md
 ```

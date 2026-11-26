@@ -15,8 +15,10 @@ services:
       - "5433:5432"   # host 5433 -> container 5432
     volumes:
       - db-data:/var/lib/postgresql/data
-      # flash_sale_test, for running pytest from your machine against localhost:5433
-      - ./docker/postgres/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+    configs:
+      # Runs once, when the volume is first created: flash_sale_test for pytest.
+      - source: create-test-db
+        target: /docker-entrypoint-initdb.d/create-test-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d flash_sale"]
       interval: 5s
@@ -47,3 +49,7 @@ services:
 
 volumes:
   db-data:
+
+configs:
+  create-test-db:
+    content: CREATE DATABASE flash_sale_test;
