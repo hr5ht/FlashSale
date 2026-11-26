@@ -13,13 +13,14 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
-from app.core.exceptions import RetryableTransaction
+from app.core.exceptions import AppError, RetryableTransaction
 from app.core.security import hash_password
 from app.exceptions.booking import SeatLimitExceeded, SeatsUnavailable
-from app.models.booking import SeatClaim
+from app.models.booking import Booking, Hold, SeatClaim
 from app.models.event import Event, EventStatus, PriceTier, Seat, Section
 from app.models.user import Role, User
 from app.services.auth_service import register_user
+from app.services.booking_service import confirm_hold
 from app.services.hold_service import create_hold
 from app.services.seat_acquisition import STRATEGIES
 
@@ -243,6 +244,75 @@ def print_reports(reports: list[Report], seats_per_buyer: int) -> None:
             print(f"{report.strategy} @ {report.isolation}: {failures}")
 
 
+async def send_once(factory: async_sessionmaker, request) -> str:
+    async with factory() as session:
+        try:
+            return f"id:{(await request(session)).id}"
+        except AppError as error:
+            return f"rejected:{type(error).__name__}"
+
+
+def summarize(label: str, answers: list[str], retries: int, created: int) -> bool:
+    groups = [answers[start : start + retries] for start in range(0, len(answers), retries)]
+    ids_per_buyer = [{answer for answer in group if answer.startswith("id:")} for group in groups]
+    same_id = sum(
+        answer.startswith("id:") and len(ids) == 1
+        for group, ids in zip(groups, ids_per_buyer)
+        for answer in group
+    )
+    rejected = Counter(answer for answer in answers if answer.startswith("rejected"))
+    print(
+        f"{label:<8} requests {len(answers):>5}   created {created:>4}   "
+        f"answered with the original {same_id:>5}   rejected {sum(rejected.values()):>4} {dict(rejected) or ''}"
+    )
+    return created == len(groups) and all(len(ids) <= 1 for ids in ids_per_buyer)
+
+
+async def run_idempotency(engine: AsyncEngine, buyers: int, retries: int) -> bool:
+    """Every buyer sends the same hold, then the same confirm, `retries` times at once with one key."""
+    await reset(engine)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    event, people, seat_ids = await seed_sale(factory, buyers * 2, buyers)
+
+    hold_answers = await asyncio.gather(
+        *(
+            send_once(
+                factory,
+                lambda session, b=buyer, i=index: create_hold(
+                    session, b, event, seat_ids[2 * i : 2 * i + 2], f"hold-{i}"
+                ),
+            )
+            for index, buyer in enumerate(people)
+            for _ in range(retries)
+        )
+    )
+    async with factory() as session:
+        rows = (await session.execute(select(Hold.user_id, Hold.id))).all()
+        holds_created = len(rows)  # counted from rows, so a duplicate can't hide in the dict
+        hold_ids = {user_id: hold_id for user_id, hold_id in rows}
+
+    confirm_answers = await asyncio.gather(
+        *(
+            send_once(
+                factory,
+                lambda session, b=buyer, i=index: confirm_hold(
+                    session, b, hold_ids[b.id], f"confirm-{i}"
+                ),
+            )
+            for index, buyer in enumerate(people)
+            for _ in range(retries)
+        )
+    )
+    async with factory() as session:
+        bookings_created = await session.scalar(select(func.count()).select_from(Booking)) or 0
+
+    print(f"{buyers} buyers x {retries} simultaneous retries, one idempotency key per buyer per step\n")
+    holds_ok = summarize("hold", hold_answers, retries, holds_created)
+    bookings_ok = summarize("confirm", confirm_answers, retries, bookings_created)
+    print(f"\nduplicates: {holds_created - buyers} holds, {bookings_created - buyers} bookings")
+    return holds_ok and bookings_ok
+
+
 HOT_QUERIES = {
     "event listing (city + category, ordered)": """
         SELECT e.id, e.title, e.starts_at,
@@ -373,6 +443,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--explain", action="store_true")
     parser.add_argument("--explain-events", type=int, default=5000)
     parser.add_argument("--explain-seats", type=int, default=5000)
+    parser.add_argument("--idempotency", action="store_true", help="measure same-key retries instead")
+    parser.add_argument("--retries", type=int, default=10)
     return parser.parse_args()
 
 
@@ -390,6 +462,13 @@ async def main() -> None:
         await run_explain(engine, args.explain_events, args.explain_seats)
         await engine.dispose()
         return
+
+    if args.idempotency:
+        engine = create_async_engine(args.database_url, pool_size=args.pool, max_overflow=0)
+        no_duplicates = await run_idempotency(engine, args.buyers, args.retries)
+        await reset(engine)
+        await engine.dispose()
+        raise SystemExit(0 if no_duplicates else 1)
 
     reports: list[Report] = []
     for level in levels:
